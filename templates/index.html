@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+    <section>
+    <div style="margin: 10px 0; font-weight: bold; font-size: 30px; text-align: center">Vangogh</div>
+        <div class="row">
+            <div style="display: flex; flex-direction: row; justify-content: center">
+                <div class="box6" style="margin: 0 10px"><img id="img1" width="400px" height="400px"></div>
+                <div class="box6" style="margin: 0 10px"><img id="img2" width="400px" height="400px"></div>
+            </div>
+            <div style="display: flex; flex-direction: row; justify-content: center">
+                <div class="box6" style="margin-right: 190px; text-align: center">Input</div>
+                <div class="box6" style="margin-left: 190px; text-align: center">Output</div>
+            </div>
+        </div>
+
+        <form action="{% url 'content:predict' %}" method="post" class="form" enctype="multipart/form-data"
+              id="imgForm">
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom: 30px">
+                <div class="custom-file" style="margin: 30px 0 20px 120px;">
+                    {{ form.image }}
+                </div>
+                <div style="width:135px; margin: auto">
+                    <button type="submit" id="button" class="btn">이미지 변환</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    </section>
+
+    <script src="http://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+    <!-- javascript -->
+    <script>
+        $(function () {
+            $('#id_image').change(function (e) {
+                //파일 객체를 가져온다
+                var file = e.target.files[0];
+                var reader = new FileReader();
+
+                //이미지가 아닐경우 종료
+                if (file.type.indexOf("image") < 0) {
+                    alert("이미지 파일을 지정해주십시오.");
+                    return false;
+                }
+
+                //업로드한 이미지를 설정
+                reader.onload = (function (file) {
+                    return function (e) {
+                        $("#img1").attr("src", e.target.result);
+                        $("#img1").attr("title", file.name);
+                    };
+                })(file);
+                reader.readAsDataURL(file);
+
+            });
+        });
+    </script>
+
+    <!-- セキュリティ対応-->
+    <script>
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = jQuery.trim(cookies[i]);
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        var csrftoken = getCookie('csrftoken');
+
+        function csrfSafeMethod(method) {
+            // these HTTP methods do not require CSRF protection
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        // 보안 대응
+
+        // 이미지 업로드
+        // 송신 버튼으로 불리다
+        //Ajax통신 중에 로딩 표시
+        $('#imgForm').on('submit', e => {
+            // 디폴트 이벤트를 취소하고 페이지 천이하지 않도록!
+            e.preventDefault();
+            $(document).ajaxSend(function () {
+                $("#overlay").fadeIn(300);
+            });
+            var formData = new FormData($('#imgForm').get(0));
+            $.ajax({
+                'url': '{% url "content:predict" %}',
+                'type': 'POST',
+                'processData': false,
+                'contentType': false,
+                'data': formData,
+            }).done(response => {
+                console.log("success2!");
+                $("#img2").attr("src", response.img_str);
+                setTimeout(function () {
+                    $("#overlay").fadeOut(300);
+                }, 500);
+            })
+                .fail((ata, textStatus, xhr) => {
+                    alert(xhr);
+                });
+        });
+    </script>
+
+
+{% endblock %}
+
